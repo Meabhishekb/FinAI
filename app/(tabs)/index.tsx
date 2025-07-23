@@ -93,7 +93,7 @@ export default function HomeScreen() {
     ));
     try {
       // Call Gemini API
-      const apiKey = 'AIzaSyCGP4fJDXC7HdHcqwEME1QnvGF9tzeWm_E';
+      const apiKey = '';
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
         method: 'POST',
         headers: {
