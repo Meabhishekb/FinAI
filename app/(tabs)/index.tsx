@@ -1,14 +1,20 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, View, TextInput, ScrollView, TouchableOpacity, Text, Image, ImageBackground, Animated, Dimensions } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  Image,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 type Message = {
   id: string;
@@ -33,7 +39,7 @@ function TypingLoader() {
 
   return (
     <View style={{ marginBottom: 12, alignItems: 'flex-start' }}>
-      <View style={[styles.textMsg, styles.aiMsg, { flexDirection: 'row', alignItems: 'center', width: 60, height: 32 }]}> 
+      <View style={[styles.textMsg, styles.aiMsg, { flexDirection: 'row', alignItems: 'center', width: 60, height: 32 }]}>
         {[0, 1, 2].map(i => (
           <View
             key={i}
@@ -53,9 +59,7 @@ function TypingLoader() {
   );
 }
 
-// ...existing code...
 export default function HomeScreen() {
-  // Each chat is { id, messages: Message[] }
   const [chats, setChats] = useState([{ id: '1', messages: [] as Message[] }]);
   const [activeChatId, setActiveChatId] = useState('1');
   const [input, setInput] = useState('');
@@ -64,11 +68,9 @@ export default function HomeScreen() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarAnim = useRef(new Animated.Value(-Dimensions.get('window').width * 0.7)).current;
 
-  // Get active chat messages
   const activeChat = chats.find(c => c.id === activeChatId) || chats[0];
   const messages = activeChat?.messages || [];
 
-  // Sidebar animation
   useEffect(() => {
     Animated.timing(sidebarAnim, {
       toValue: sidebarOpen ? 0 : -Dimensions.get('window').width * 0.7,
@@ -77,22 +79,18 @@ export default function HomeScreen() {
     }).start();
   }, [sidebarOpen]);
 
-  // Send message in active chat
   const sendMessage = async () => {
     if (!input.trim()) return;
-    // Use a more unique id for messages
     const uniqueId = Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8);
     const userMsg: Message = { id: uniqueId, type: 'text', content: input, sender: 'user' };
     setInput('');
     setLoading(true);
-    // Add only the user message first
     setChats(prev => prev.map(chat =>
       chat.id === activeChatId
         ? { ...chat, messages: [...chat.messages, userMsg] }
         : chat
     ));
     try {
-      // Call Gemini API
       const apiKey = '';
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
         method: 'POST',
@@ -103,9 +101,7 @@ export default function HomeScreen() {
         body: JSON.stringify({
           contents: [
             {
-              parts: [
-                { text: input }
-              ]
+              parts: [{ text: input }]
             }
           ]
         }),
@@ -119,7 +115,7 @@ export default function HomeScreen() {
           : chat
       ));
     } catch (err) {
-      const aiMsg: Message = { id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8), type: 'text', content: 'Error contacting Gemini.', sender: 'ai' };
+      const aiMsg: Message = { id: Date.now().toString(), type: 'text', content: 'Error contacting Gemini.', sender: 'ai' };
       setChats(prev => prev.map(chat =>
         chat.id === activeChatId
           ? { ...chat, messages: [...chat.messages, aiMsg] }
@@ -129,16 +125,14 @@ export default function HomeScreen() {
     setLoading(false);
   };
 
-  // Attach icon upload handler
   const handleAttach = async () => {
     setUploading(true);
-    // Pick image first
     const imageResult = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: false,
       quality: 1,
     });
-    if (!imageResult.canceled && imageResult.assets && imageResult.assets.length > 0) {
+    if (!imageResult.canceled && imageResult.assets?.length) {
       const imgMsg: Message = {
         id: Date.now().toString(),
         type: 'image',
@@ -154,12 +148,12 @@ export default function HomeScreen() {
       setUploading(false);
       return;
     }
-    // If no image, pick document (PDF)
+
     const docResult = await DocumentPicker.getDocumentAsync({
       type: ['application/pdf'],
       copyToCacheDirectory: true,
     });
-    if (docResult && docResult.assets && docResult.assets.length > 0) {
+    if (docResult && docResult.assets?.length) {
       const asset = docResult.assets[0];
       const pdfMsg: Message = {
         id: Date.now().toString(),
@@ -177,7 +171,6 @@ export default function HomeScreen() {
     setUploading(false);
   };
 
-  // Create new chat
   const handleNewChat = () => {
     const newId = (Date.now()).toString();
     setChats(prev => [...prev, { id: newId, messages: [] }]);
@@ -185,9 +178,8 @@ export default function HomeScreen() {
     setSidebarOpen(false);
   };
 
-  // Sidebar UI
   const renderSidebar = () => (
-    <Animated.View style={[styles.sidebar, { left: sidebarAnim }]}> 
+    <Animated.View style={[styles.sidebar, { left: sidebarAnim }]}>
       <View style={styles.sidebarHeader}>
         <Text style={styles.sidebarTitle}>Chats</Text>
         <TouchableOpacity onPress={() => setSidebarOpen(false)} style={styles.closeSidebarBtn}>
@@ -212,13 +204,13 @@ export default function HomeScreen() {
     </Animated.View>
   );
 
-  return (
+  // Conditionally wrap content with KeyboardAvoidingView for mobile only
+  const Content = (
     <ImageBackground
       source={{ uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80' }}
       style={styles.bg}
       imageStyle={{ opacity: 0.3 }}
     >
-      {/* Header */}
       <View style={styles.header}>
         <Image
           source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4712/4712027.png' }}
@@ -233,21 +225,25 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </View>
+
       {renderSidebar()}
+
       <View style={styles.overlay}>
-        <ScrollView style={styles.messages} contentContainerStyle={{ paddingBottom: 80 }}>
+        <ScrollView
+          style={styles.messages}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          keyboardShouldPersistTaps="handled"
+        >
           {messages.map((msg) => (
-          <View
-            key={msg.id}
+            <View
+              key={msg.id}
               style={{
                 marginBottom: 12,
                 alignItems: msg.sender === 'user' ? 'flex-end' : 'flex-start',
               }}
             >
               {msg.type === 'text' && (
-                <Text
-                  style={[styles.textMsg, msg.sender === 'user' ? styles.userMsg : styles.aiMsg]}
-                >
+                <Text style={[styles.textMsg, msg.sender === 'user' ? styles.userMsg : styles.aiMsg]}>
                   {msg.content}
                 </Text>
               )}
@@ -256,13 +252,16 @@ export default function HomeScreen() {
               )}
               {msg.type === 'pdf' && (
                 <TouchableOpacity onPress={() => {}} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[styles.pdfText, msg.sender === 'user' ? styles.userMsg : styles.aiMsg]}>📄 {msg.name || 'Document'}</Text>
+                  <Text style={[styles.pdfText, msg.sender === 'user' ? styles.userMsg : styles.aiMsg]}>
+                    📄 {msg.name || 'Document'}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
           ))}
           {loading && <TypingLoader />}
         </ScrollView>
+
         <View style={styles.chatInputContainer}>
           <TouchableOpacity style={styles.attachButton} onPress={handleAttach} disabled={uploading}>
             <Image
@@ -285,6 +284,20 @@ export default function HomeScreen() {
         </View>
       </View>
     </ImageBackground>
+  );
+
+  return Platform.OS === 'web' ? (
+    <View style={{ flex: 1 }}>
+      {Content}
+    </View>
+  ) : (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
+      {Content}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -423,7 +436,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 4,
   },
-  // Sidebar styles
   sidebar: {
     position: 'absolute',
     top: 0,
