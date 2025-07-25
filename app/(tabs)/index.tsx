@@ -16,12 +16,16 @@ import {
   View
 } from 'react-native';
 
+// Import mock data
+import mockData from './mock.json';
+
 type Message = {
   id: string;
-  type: 'text' | 'image' | 'pdf';
+  type: 'text' | 'image' | 'pdf' | 'api_response';
   content: string;
   name?: string;
   sender: 'user' | 'ai';
+  results?: { summary: string; img: string }[];
 };
 
 function TypingLoader() {
@@ -90,32 +94,48 @@ export default function HomeScreen() {
         ? { ...chat, messages: [...chat.messages, userMsg] }
         : chat
     ));
+
     try {
-      const apiKey = '';
-      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
+      const apiUrl = 'https://github-cloud-run-service-430791512015.europe-west1.run.app/fin-hack/process';
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-goog-api-key': apiKey,
         },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: input }]
-            }
-          ]
+          input_string: input,
         }),
       });
+      if (!response.ok) throw new Error('API request failed');
       const data = await response.json();
-      const geminiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, no response.';
-      const aiMsg: Message = { id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8), type: 'text', content: geminiReply, sender: 'ai' };
+      const results = data.results || [];
+      const aiMsg: Message = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8),
+        type: 'api_response',
+        content: '',
+        sender: 'ai',
+        results: results.map((item: { summary: string; img: string }) => ({
+          summary: item.summary || 'No summary available',
+          img: item.img || '',
+        })),
+      };
       setChats(prev => prev.map(chat =>
         chat.id === activeChatId
           ? { ...chat, messages: [...chat.messages, aiMsg] }
           : chat
       ));
     } catch (err) {
-      const aiMsg: Message = { id: Date.now().toString(), type: 'text', content: 'Error contacting Gemini.', sender: 'ai' };
+      // Fallback to mock data when API fails
+      const aiMsg: Message = {
+        id: Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8),
+        type: 'api_response',
+        content: '',
+        sender: 'ai',
+        results: mockData.results.map((item: { summary: string; img: string }) => ({
+          summary: item.summary || 'No summary available',
+          img: item.img || '',
+        })),
+      };
       setChats(prev => prev.map(chat =>
         chat.id === activeChatId
           ? { ...chat, messages: [...chat.messages, aiMsg] }
@@ -204,7 +224,6 @@ export default function HomeScreen() {
     </Animated.View>
   );
 
-  // Conditionally wrap content with KeyboardAvoidingView for mobile only
   const Content = (
     <ImageBackground
       source={{ uri: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80' }}
@@ -256,6 +275,23 @@ export default function HomeScreen() {
                     📄 {msg.name || 'Document'}
                   </Text>
                 </TouchableOpacity>
+              )}
+              {msg.type === 'api_response' && msg.results && (
+                <View style={[styles.aiMsg, { backgroundColor: 'rgba(40,40,60,0.7)', padding: 10, borderRadius: 10 }]}>
+                  {msg.results.map((result, index) => (
+                    <View key={index} style={{ marginBottom: 10 }}>
+                      <Text style={{ color: '#fff', fontSize: 16 }}>{result.summary}</Text>
+                      {result.img && (
+                        <Image
+                          source={{ uri: result.img }}
+                          style={{ width: 120, height: 120, borderRadius: 8, marginTop: 4 }}
+                          onError={(e) => console.log(`Image failed to load: ${result.img}`, e.nativeEvent.error)}
+                          defaultSource={require('./fallback-image.png')} // Optional: Add a local fallback image
+                        />
+                      )}
+                    </View>
+                  ))}
+                </View>
               )}
             </View>
           ))}

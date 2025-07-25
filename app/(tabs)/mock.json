@@ -1,0 +1,12 @@
+{
+  "results": [
+    {
+      "summary": "This is a mock summary for a financial report.",
+      "img": "https://via.placeholder.com/120?text=Mock+Image+1"
+    },
+    {
+      "summary": "Another mock summary for market analysis.",
+      "img": "https://via.placeholder.com/120?text=Mock+Image+2"
+    }
+  ]
+}
